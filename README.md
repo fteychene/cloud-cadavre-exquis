@@ -1,5 +1,7 @@
 # Cadavre exquis
 
+![](example.gif)
+
 ## Local run
 
 ```bash

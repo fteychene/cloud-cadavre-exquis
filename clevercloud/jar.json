@@ -1,0 +1,9 @@
+{
+  "build": {
+    "type": "gradle",
+    "goal": "shadowJar"
+  },
+  "deploy": {
+    "jarName": "dispatcher/build/libs/dispatcher-1.0-SNAPSHOT-all.jar"
+  }
+}
