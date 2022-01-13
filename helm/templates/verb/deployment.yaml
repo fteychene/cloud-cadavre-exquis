@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cadavre.verb.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: verb
+    release: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.verb.replica | default 1}}
+  selector:
+    matchLabels:
+      app: verb
+  template:
+    metadata:
+      labels:
+        app: verb
+    spec:
+      containers:
+        - name: provider
+          image: "{{ .Values.verb.image.repository }}/{{ .Values.verb.image.name}}:{{ .Values.verb.image.tag}}"
+          env:
+            - name: WORD_TYPE
+              value: VERB
+            - name: REGISTER_URLS
+              value: http://{{ include "cadavre.register.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
+          ports:
+            - containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 3
+          resources:
+            {{- toYaml .Values.verb.resources | nindent 12 }}

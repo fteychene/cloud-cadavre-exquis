@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cadavre.adjective.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: adjective
+    release: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.adjective.replica | default 1}}
+  selector:
+    matchLabels:
+      app: adjective
+  template:
+    metadata:
+      labels:
+        app: adjective
+    spec:
+      containers:
+        - name: provider
+          image: "{{ .Values.adjective.image.repository }}/{{ .Values.adjective.image.name}}:{{ .Values.adjective.image.tag}}"
+          env:
+            - name: WORD_TYPE
+              value: ADJECTIVE
+            - name: REGISTER_URLS
+              value: http://{{ include "cadavre.register.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
+          ports:
+            - containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 3
+          resources:
+            {{- toYaml .Values.adjective.resources | nindent 12 }}

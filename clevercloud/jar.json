@@ -1,0 +1,9 @@
+{
+  "build": {
+    "type": "gradle",
+    "goal": ":register:shadowJar"
+  },
+  "deploy": {
+    "jarName": "register/build/libs/register-1.0-SNAPSHOT-all.jar"
+  }
+}

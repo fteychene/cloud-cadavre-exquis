@@ -1,0 +1,9 @@
+apiVersion: v2
+name: fteychene-cadavre-exquis
+type: application
+version: 1.0.0-SNAPSHOT
+dependencies:
+  - name: postgresql
+    version: 10.14.2
+    repository: https://charts.bitnami.com/bitnami
+    alias: postgresql

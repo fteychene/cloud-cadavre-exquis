@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cadavre.subject.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: subject
+    release: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.subject.replica | default 1}}
+  selector:
+    matchLabels:
+      app: subject
+  template:
+    metadata:
+      labels:
+        app: subject
+    spec:
+      containers:
+        - name: provider
+          image: "{{ .Values.subject.image.repository }}/{{ .Values.subject.image.name}}:{{ .Values.subject.image.tag}}"
+          env:
+            - name: WORD_TYPE
+              value: SUBJECT
+            - name: REGISTER_URLS
+              value: http://{{ include "cadavre.register.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
+          ports:
+            - containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 3
+          resources:
+            {{- toYaml .Values.subject.resources | nindent 12 }}

@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cadavre.register.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: register
+    release: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.register.replica | default 1 }}
+  selector:
+    matchLabels:
+      app: register
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: register
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: register
+          image: "{{ .Values.register.image.repository }}/{{ .Values.register.image.name}}:{{ .Values.register.image.tag}}"
+          env:
+            - name: POSTGRESQL_ADDON_HOST
+              value: "{{ .Release.Name }}-postgresql.svc"
+            - name: POSTGRESQL_ADDON_PORT
+              value: "5432"
+            - name: POSTGRESQL_ADDON_DB
+              value: {{ .Values.postgresql.postgresqlDatabase }}
+            - name: POSTGRESQL_ADDON_USER
+              value: {{ .Values.postgresql.postgresqlUsername }}
+            - name: POSTGRESQL_ADDON_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: postgresql-postgres-password
+                  name: {{ .Release.Name }}-postgresql
+          ports:
+            - containerPort: 8080
+          resources:
+            {{- toYaml .Values.register.resources | nindent 12 }}

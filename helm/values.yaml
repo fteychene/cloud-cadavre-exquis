@@ -1,0 +1,39 @@
+dispatcher:
+  replica: 2
+  image:
+    repository: docker.io/fteychene
+    name: cloud-cadavre-exquis-dispatcher
+    tag: 1.0-SNAPSHOT
+  domain: cadavre-exquis.kube
+
+
+register:
+  image:
+    repository: docker.io/fteychene
+    name: cloud-cadavre-exquis-register
+    tag: 1.0-SNAPSHOT
+
+subject:
+  replica: 2
+  image:
+    repository: docker.io/fteychene
+    name: cloud-cadavre-exquis-provider
+    tag: 1.0-SNAPSHOT
+
+verb:
+  replica: 2
+  image:
+    repository: docker.io/fteychene
+    name: cloud-cadavre-exquis-provider
+    tag: 1.0-SNAPSHOT
+
+adjective:
+  replica: 2
+  image:
+    repository: docker.io/fteychene
+    name: cloud-cadavre-exquis-provider
+    tag: 1.0-SNAPSHOT
+
+postgresql:
+  postgresqlDatabase: cadavreexquis
+  postgresqlUsername: pg

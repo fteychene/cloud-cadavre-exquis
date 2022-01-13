@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cadavre.dispatcher.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: dispatcher
+    release: {{ .Release.Name }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: dispatcher
+    release: {{ .Release.Name }}

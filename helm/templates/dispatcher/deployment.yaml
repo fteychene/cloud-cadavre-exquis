@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cadavre.dispatcher.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: dispatcher
+    release: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.dispatcher.replica | default 1}}
+  selector:
+    matchLabels:
+      app: dispatcher
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: dispatcher
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: dispatcher
+          image: "{{ .Values.dispatcher.image.repository }}/{{ .Values.dispatcher.image.name}}:{{ .Values.dispatcher.image.tag}}"
+          env:
+            - name: REGISTER_URLS
+              value: http://{{ include "cadavre.register.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
+          ports:
+            - containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 3
+          resources:
+            {{- toYaml .Values.dispatcher.resources | nindent 12 }}
