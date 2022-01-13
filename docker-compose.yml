@@ -2,11 +2,13 @@ version: "3.9"
 
 services:
   dispatcher:
-    image: fteychene/cloud-cadavre-exquis-dispatcher:1.0-SNAPSHOT
+    image: fteychene/cloud-cadavre-exquis-dispatcher-bis:1.0-SNAPSHOT
     ports:
       - 8080:8080
     environment:
-      REGISTER_URLS: "http://registers:8080"
+      SUBJECT_URL: "http://providers-subject:8080"
+      VERB_URL: "http://providers-subject:8080"
+      ADJECTIVE_URL: "http://providers-adj:8080"
     networks:
       - cadaver
       - provider
@@ -19,23 +21,8 @@ services:
     networks:
       - cadaver
       - provider
-  registers:
-    image: fteychene/cloud-cadavre-exquis-register:1.0-SNAPSHOT
-    depends_on:
-      - postgres
-    ports:
-      - 8081:8080
-    environment:
-      POSTGRESQL_ADDON_HOST: "postgres"
-      POSTGRESQL_ADDON_PORT: "5432"
-      POSTGRESQL_ADDON_DB: "register"
-      POSTGRESQL_ADDON_USER: "test"
-      POSTGRESQL_ADDON_PASSWORD: "password"
-    networks:
-      - cadaver
-      - provider
   providers-subject:
-    image: fteychene/cloud-cadavre-exquis-provider:1.0-SNAPSHOT
+    image: fteychene/cloud-cadavre-exquis-provider-bis:1.0-SNAPSHOT
     depends_on:
       - registers
     environment:
@@ -44,7 +31,7 @@ services:
     networks:
       - provider
   providers-verb:
-    image: fteychene/cloud-cadavre-exquis-provider:1.0-SNAPSHOT
+    image: fteychene/cloud-cadavre-exquis-provider-bis:1.0-SNAPSHOT
     depends_on:
       - registers
     environment:
@@ -53,20 +40,12 @@ services:
     networks:
       - provider
   providers-adj:
-    image: fteychene/cloud-cadavre-exquis-provider:1.0-SNAPSHOT
+    image: fteychene/cloud-cadavre-exquis-provider-bis:1.0-SNAPSHOT
     depends_on:
       - registers
     environment:
       REGISTER_URLS: "http://registers:8080"
       WORD_TYPE: ADJECTIVE
-    networks:
-      - provider
-  postgres:
-    image: postgres:13
-    environment:
-      POSTGRES_USER: "test"
-      POSTGRES_PASSWORD: "password"
-      POSTGRES_DB: "register"
     networks:
       - provider
 networks:

@@ -24,7 +24,7 @@ jib  {
         image = "openjdk:slim-buster"
     }
     to {
-        image = "fteychene/cloud-cadavre-exquis-${project.name}"
+        image = "fteychene/cloud-cadavre-exquis-${project.name}-bis"
         tags = setOf("${project.version}", "latest")
     }
     container {

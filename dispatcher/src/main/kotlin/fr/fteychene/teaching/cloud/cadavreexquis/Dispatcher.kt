@@ -4,7 +4,13 @@ import com.github.jknack.handlebars.Helper
 import okhttp3.OkHttpClient
 import org.http4k.client.DualSyncAsyncHttpHandler
 import org.http4k.client.OkHttp
-import org.http4k.core.*
+import org.http4k.core.Body
+import org.http4k.core.ContentType
+import org.http4k.core.Method
+import org.http4k.core.Request
+import org.http4k.core.Response
+import org.http4k.core.Status
+import org.http4k.core.with
 import org.http4k.format.Jackson.auto
 import org.http4k.routing.bind
 import org.http4k.routing.routes
@@ -15,16 +21,17 @@ import org.http4k.template.ViewModel
 import org.http4k.template.viewModel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import java.lang.IllegalStateException
 import java.time.Instant
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 val INSTANCE_ID = System.getenv("INSTANCE_ID") ?: UUID.randomUUID().toString()
 val APP_ID = System.getenv("APP_ID") ?: "DEV_APP_ID"
 val PORT = (System.getenv("PORT") ?: "8080").toInt()
 
-val REGISTER_URLS: List<String> = System.getenv("REGISTER_URLS")?.let { it.split(",") } ?: listOf()
+val SUBJECT_URL: String = System.getenv("SUBJECT_URL")!!
+val VERB_URL: String = System.getenv("VERB_URL")!!
+val ADJECTIVE_URL: String = System.getenv("ADJECTIVE_URL")!!
 
 data class HealthStatus(
     val time: Instant,
@@ -118,28 +125,23 @@ fun main() {
             Response(Status.OK).with(hbsTemplate of CadavreView(responses))
         }
     ).asServer(Netty(PORT)).start()
-
 }
 
 private fun chooseProvider(
     type: String,
     httpClient: DualSyncAsyncHttpHandler
-): Registration? {
-    val register = REGISTER_URLS.shuffled().first()
-    val registerResponse = Request(Method.GET, "$register/providers?type=$type")
-        .run(httpClient)
-    val providers = ListRegistrationJsonLens(registerResponse)
-    logger.info("$providers")
-    val chosenOne = providers.shuffled().firstOrNull()
-    registerResponse.close()
-    return chosenOne
-}
+): Registration? = when (type) {
+        "ADJECTIVE" -> Registration(ADJECTIVE_URL)
+        "SUBJECT" -> Registration(SUBJECT_URL)
+        "VERB" -> Registration(VERB_URL)
+        else -> null
+    }
 
 fun retryableChooseProvider(
     type: String,
     httpClient: DualSyncAsyncHttpHandler,
     retries: Int = 0
-): Registration  =
+): Registration =
     chooseProvider(type, httpClient) ?: run {
         if (retries > 4) {
             Thread.sleep(300)
