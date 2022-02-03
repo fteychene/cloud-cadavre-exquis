@@ -24,6 +24,7 @@ val PORT = (System.getenv("PORT") ?: "8080").toInt()
 
 val REGISTER_URLS: List<String> = System.getenv("REGISTER_URLS")?.let { it.split(",") } ?: listOf()
 val PROVIDER_TYPE: WordType = System.getenv("WORD_TYPE")?.let { conf -> WordType.values().firstOrNull { it.name == conf } } ?: WordType.values().toList().shuffled().first()
+val ADVERTISER_URL: String = System.getenv("ADVERTISER_URL") ?: "http://${InetAddress.getLocalHost().hostAddress}:${PORT}"
 
 data class HealthStatus(
     val time: Instant,
@@ -115,7 +116,7 @@ fun main() {
     REGISTER_URLS.forEach { register ->
         Request(Method.PUT, "$register/providers")
             .with(RegistrationJsonLens of Registration(
-                url="http://${InetAddress.getLocalHost().hostAddress}:${PORT}",
+                url= ADVERTISER_URL,
                 type = PROVIDER_TYPE,
                 healthcheck = "/health"))
             .run(httpClient)
