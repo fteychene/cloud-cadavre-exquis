@@ -3,8 +3,6 @@ version: "3.9"
 services:
   dispatcher:
     image: fteychene/cloud-cadavre-exquis-dispatcher:1.0-SNAPSHOT
-    ports:
-      - 8080:8080
     environment:
       REGISTER_URLS: "http://registers:8080"
     networks:
@@ -12,6 +10,8 @@ services:
       - provider
   lb:
     image: nginx:1.19
+    ports:
+      - 8080:80
     volumes:
       - type: bind
         source: $PWD/docker/nginx.conf
@@ -23,8 +23,6 @@ services:
     image: fteychene/cloud-cadavre-exquis-register:1.0-SNAPSHOT
     depends_on:
       - postgres
-    ports:
-      - 8081:8080
     environment:
       POSTGRESQL_ADDON_HOST: "postgres"
       POSTGRESQL_ADDON_PORT: "5432"
