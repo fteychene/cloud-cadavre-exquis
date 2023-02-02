@@ -8,6 +8,10 @@
 ./local_docker.sh
 ```
 
+## Architecture
+
+![](exquisite-corpse.png)
+
 ## Configuration
 
 ### Common
