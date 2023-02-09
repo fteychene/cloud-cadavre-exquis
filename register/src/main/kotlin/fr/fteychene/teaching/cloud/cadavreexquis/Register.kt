@@ -33,6 +33,7 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 
 val INSTANCE_ID = System.getenv("INSTANCE_ID") ?: UUID.randomUUID().toString()
+val APP_ID = System.getenv("APP_ID") ?: "REGISTER_APP_ID"
 val PORT = (System.getenv("PORT") ?: "8080").toInt()
 val STORAGE = (System.getenv("STORAGE") ?: "PG").toStorage()
 
@@ -49,6 +50,12 @@ enum class Type {
     VERB, ADJECTIVE, SUBJECT
 }
 
+data class HealthStatus(
+        val time: Instant,
+        val appId: String = APP_ID,
+        val instanceId: String = INSTANCE_ID
+)
+
 data class Registration(
         val url: String, // http://172.18.0.4:8080
         val type: Type, // VERB
@@ -63,6 +70,7 @@ data class RegistrationResponse(
 
 fun Registration.toResponse(): RegistrationResponse = RegistrationResponse(url, type)
 
+val HealthStatusLens = Body.auto<HealthStatus>().toLens()
 val RegistrationJsonLens = Body.auto<Registration>().toLens()
 
 val RegistrationListJsonLens = Body.auto<List<RegistrationResponse>>().toLens()
@@ -123,7 +131,10 @@ fun main() {
                 val typeParam: Type = Query.enum<Type>().required("type")(request)
                 val providers = STORAGE.loadRegistrations(typeParam)
                 Response(Status.OK).with(RegistrationListJsonLens of providers.map { it.toResponse() })
-            }
+            },
+            "/health" bind Method.GET to {
+                Response(Status.OK).with(HealthStatusLens of HealthStatus(Instant.now()))
+            },
     ).asServer(Netty(PORT)).start()
 
 }
