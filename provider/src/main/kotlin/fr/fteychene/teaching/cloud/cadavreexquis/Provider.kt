@@ -1,5 +1,7 @@
 package fr.fteychene.teaching.cloud.cadavreexquis
 
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import org.http4k.client.OkHttp
 import org.http4k.core.*
@@ -92,16 +94,18 @@ fun main() {
             .callTimeout(1, TimeUnit.MINUTES)
             .build())
 
-    REGISTER_URLS.forEach { register ->
-        var response = Request(Method.PUT, "$register/providers")
-                .with(RegistrationJsonLens of Registration(
-                        url = ADVERTISER_URL,
-                        type = PROVIDER_TYPE,
-                        healthcheck = "/health"))
-                .run(httpClient)
-        if (response.status != Status.CREATED) {
-            logger.error("Error while registering ourself. Response is {} with {} body", response.status, response.bodyString())
-            throw RuntimeException("Can't register ourself. Let's die")
+    GlobalScope.launch {
+        REGISTER_URLS.forEach { register ->
+            var response = Request(Method.PUT, "$register/providers")
+                    .with(RegistrationJsonLens of Registration(
+                            url = ADVERTISER_URL,
+                            type = PROVIDER_TYPE,
+                            healthcheck = "/health"))
+                    .run(httpClient)
+            if (response.status != Status.CREATED) {
+                logger.error("Error while registering ourself. Response is {} with {} body", response.status, response.bodyString())
+                throw RuntimeException("Can't register ourself. Let's die")
+            }
         }
     }
 
@@ -113,13 +117,16 @@ fun main() {
                 Response(Status.OK).with(HealthStatusLens of HealthStatus(Instant.now()))
             },
             "/verb" bind Method.GET to {
-                Response(Status.OK).with(WordResponseLens of WordResponse(random(WordType.VERB)))
+                if (PROVIDER_TYPE == WordType.VERB) Response(Status.OK).with(WordResponseLens of WordResponse(random(WordType.VERB)))
+                else Response(Status.BAD_REQUEST).body("Unsupported provider type")
             },
             "/subject" bind Method.GET to {
-                Response(Status.OK).with(WordResponseLens of WordResponse(random(WordType.SUBJECT)))
+                if (PROVIDER_TYPE == WordType.SUBJECT) Response(Status.OK).with(WordResponseLens of WordResponse(random(WordType.SUBJECT)))
+                else Response(Status.BAD_REQUEST).body("Unsupported provider type")
             },
             "/adjective" bind Method.GET to {
-                Response(Status.OK).with(WordResponseLens of WordResponse(random(WordType.ADJECTIVE)))
+                if (PROVIDER_TYPE == WordType.ADJECTIVE) Response(Status.OK).with(WordResponseLens of WordResponse(random(WordType.ADJECTIVE)))
+                else Response(Status.BAD_REQUEST).body("Unsupported provider type")
             }
     ).asServer(Netty(PORT)).start()
 

@@ -77,8 +77,9 @@ fun main() {
 
     val httpClient = OkHttp(
             client = OkHttpClient.Builder()
-                    .connectTimeout(3, TimeUnit.SECONDS)
-                    .readTimeout(3, TimeUnit.SECONDS)
+                    .connectTimeout(2, TimeUnit.SECONDS)
+                    .readTimeout(2, TimeUnit.SECONDS)
+                    .retryOnConnectionFailure(true)
                     .build())
 
     if (STORAGE is StorageType.Database) {
@@ -95,11 +96,11 @@ fun main() {
                     val response = Request(Method.GET, "${provider.url}${provider.healthcheck ?: "/health"}")
                             .run(httpClient)
                     if (response.status != Status.OK) {
-                        logger.info("Delete $provider")
+                        logger.info("Delete $provider. Health check is not responding 200")
                         STORAGE.deleteRegistration(provider)
                     }
                 } catch (e: SocketException) {
-                    logger.info("Delete $provider")
+                    logger.info("Delete $provider. Connectivity error", e)
                     STORAGE.deleteRegistration(provider)
                 }
             }
