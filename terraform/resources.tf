@@ -1,66 +1,73 @@
-resource "tls_private_key" "generic-ssh-key" {
+###
+# Create the ssh key pair in both openstack & ovh api
+###
+resource "tls_private_key" "private_key" {
   algorithm = "RSA"
-  rsa_bits  = 4096
-  provisioner "local-exec" {
-    command = <<EOF
-      cat <<< "${tls_private_key.generic-ssh-key.private_key_openssh}" > .ssh/id_rsa.key
-      cat <<<  "${tls_private_key.generic-ssh-key.public_key_openssh}" > .ssh/id_rsa.key
-      chmod 400 .ssh/id_rsa.key
-      chmod 400 .ssh/id_rsa.key
-    EOF
-    }
+  rsa_bits  = 2048
 }
 
-resource "hcloud_server" "controller" {
+# registers private key in ssh-agent
+resource null_resource "register_ssh_private_key" {
+  triggers = {
+    key = base64sha256(tls_private_key.private_key.private_key_pem)
+  }
+
+  provisioner "local-exec" {
+    command = "ssh-add - <<< '${tls_private_key.private_key.private_key_pem}'"
+    environment = {
+      KEY = base64encode(tls_private_key.private_key.private_key_pem)
+    }
+  }
+}
+
+
+# Keypair which will be used on nodes and bastion
+resource "openstack_compute_keypair_v2" "keypair" {
+  name       = var.name
+  public_key = tls_private_key.private_key.public_key_openssh
+
+  depends_on = [null_resource.register_ssh_private_key]
+}
+
+
+###
+# Create the VM
+###
+
+resource "openstack_compute_instance_v2" "OVH_in_Fire_controller" {
   for_each    = toset(var.server_config.k8s_controller_instances)
   name        = each.key
-  server_type = var.cloud_server_meta_config.server_type.controller
-  image       = var.cloud_server_meta_config.image
-  location    = "nbg1"
-  ssh_keys    = [hcloud_ssh_key.primary-ssh-key.name]
+  provider    = openstack.ovh
+  image_name  = var.server_config.image
+  flavor_name = var.server_config.controller_server_type
+  key_pair    = openstack_compute_keypair_v2.keypair.name
+  security_groups = ["default"]
+  network {
+    name      = "Ext-Net"
+  }
   connection {
     type        = "ssh"
     user        = "root"
-    private_key = tls_private_key.generic-ssh-key.private_key_openssh
-    host        = self.ipv4_address
+    private_key = tls_private_key.private_key.private_key_pem
+    host        = self.floating_ip
   }
+
   provisioner "remote-exec" {
     scripts = [
       "./bin/01_install.sh",
       "./bin/02_kubeadm_init.sh"
     ]
   }
-  provisioner "local-exec" {
-    command = <<EOF
-      rm -rvf ./bin/03_kubeadm_join.sh
-      echo "echo 1 > /proc/sys/net/ipv4/ip_forward" > ./bin/03_kubeadm_join.sh
-      ssh root@${self.ipv4_address} -o StrictHostKeyChecking=no -i .ssh/id_rsa.key "kubeadm token create --print-join-command" >> ./bin/03_kubeadm_join.sh
-    EOF
-  }
 }
-
-resource "hcloud_server" "worker" {
-  for_each    = toset(var.server_config.worker_instances)
+resource "openstack_compute_instance_v2" "OVH_in_Fire_worker" {
+  for_each    = toset(var.server_config.k8s_worker_instances)
   name        = each.key
-  server_type = var.server_config.worker_server_type
-  image       = var.server_config.image
-  location    = "fsn1"
-  ssh_keys    = [hcloud_ssh_key.primary-ssh-key.name]
-  depends_on = [
-      hcloud_server.controller
-  ]
-
-  connection {
-    type        = "ssh"
-    user        = "root"
-    private_key = tls_private_key.generic-ssh-key.private_key_openssh
-    host        = self.ipv4_address
-  }
-
-  provisioner "remote-exec" {
-    scripts = [
-      "./bin/01_install.sh",
-      "./bin/03_kubeadm_join.sh"
-    ]
+  provider    = openstack.ovh
+  image_name  = var.server_config.image
+  flavor_name = var.server_config.worker_server_type
+  key_pair    = openstack_compute_keypair_v2.keypair.name
+  security_groups = ["default"]
+  network {
+    name      = "Ext-Net"
   }
 }
