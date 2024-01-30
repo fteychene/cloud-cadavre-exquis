@@ -25,7 +25,7 @@ resource null_resource "register_ssh_private_key" {
 resource "openstack_compute_keypair_v2" "keypair" {
   name       = var.name
   public_key = tls_private_key.private_key.public_key_openssh
-
+  provider = openstack.ovh
   depends_on = [null_resource.register_ssh_private_key]
 }
 
