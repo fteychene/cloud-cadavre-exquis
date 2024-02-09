@@ -1,4 +1,4 @@
-variable name {
+variable "name" {
   description = "Cadavre exquis"
   default     = "cadavre-exquis"
 }

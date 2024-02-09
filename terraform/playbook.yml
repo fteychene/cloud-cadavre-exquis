@@ -1,0 +1,68 @@
+---
+- hosts: all
+  become: yes
+  tasks:
+    - name: install docker
+      apt:
+        name: docker.io
+        state: present
+        update_cache: yes
+
+    - name: install apt-transport-https
+      apt:
+        name: apt-transport-https
+        state: present
+
+    - name: add Kubernetes apt-key
+      apt_key:
+        url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+        state: present
+
+    - name: add Kubernetes apt repository
+      apt_repository:
+        repo: deb http://apt.kubernetes.io/ kubernetes-xenial main
+        state: present
+
+    - name: install kubelet kubeadm kubectl
+      apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+      vars:
+        packages:
+          - kubelet
+          - kubeadm
+          - kubectl
+
+- hosts: OVH_in_Fire_controller
+  become: yes
+  tasks:
+    - name: pull kubeadm required images
+      command: kubeadm config images pull
+
+    - name: initialize Kubernetes master
+      command: kubeadm init --pod-network-cidr=10.244.0.0/16
+
+    - name: copy kube config file for regular user
+      copy:
+        src: /etc/kubernetes/admin.conf
+        dest: $HOME/.kube/config_remote
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0644'
+
+    - name: Get join command
+      shell: kubeadm token create --print-join-command
+      register: k8s_join_command
+      changed_when: False
+
+    - name: Get Master IP
+      shell: hostname -I | awk '{print $1}'
+      register: k8s_master_ip
+      changed_when: False
+
+- hosts: OVH_in_Fire_worker
+  become: yes
+  tasks:
+    - name: join cluster
+      shell: "{{ hostvars[k8s-controller].k8s_join_command.stdout }}"

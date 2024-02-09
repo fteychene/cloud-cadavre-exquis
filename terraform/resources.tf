@@ -13,13 +13,12 @@ resource null_resource "register_ssh_private_key" {
   }
 
   provisioner "local-exec" {
-    command = "ssh-add - <<< '${tls_private_key.private_key.private_key_pem}'"
+    command = "bash -c 'echo \"${tls_private_key.private_key.private_key_pem}\" > ./ovh.pkey'"
     environment = {
       KEY = base64encode(tls_private_key.private_key.private_key_pem)
     }
   }
 }
-
 
 # Keypair which will be used on nodes and bastion
 resource "openstack_compute_keypair_v2" "keypair" {
@@ -52,6 +51,7 @@ resource "openstack_compute_instance_v2" "OVH_in_Fire_controller" {
     host        = self.floating_ip
   }
 }
+
 resource "openstack_compute_instance_v2" "OVH_in_Fire_worker" {
   for_each    = toset(var.server_config.k8s_worker_instances)
   name        = each.key
@@ -71,4 +71,52 @@ resource "openstack_compute_instance_v2" "OVH_in_Fire_worker" {
   network {
     name      = "Ext-Net"
   }
+
+  connection {
+    type        = "ssh"
+    user        = "root"
+    private_key = tls_private_key.private_key.private_key_pem
+    host        = self.floating_ip
+  }
 }
+#
+#resource "openstack_networking_floatingip_v2" "fip_controller" {
+#  for_each   = toset(var.server_config.k8s_controller_instances)
+#  pool       = "Ext-Net"
+#  depends_on = [openstack_compute_instance_v2.OVH_in_Fire_controller]
+#}
+#
+#resource "openstack_compute_floatingip_associate_v2" "fip_assoc_controller" {
+#  for_each = openstack_networking_floatingip_v2.fip_controller
+#  floating_ip = each.value.address
+#  instance_id = openstack_compute_instance_v2.OVH_in_Fire_controller[each.key].id
+#}
+#
+#resource "openstack_networking_floatingip_v2" "fip_worker" {
+#  for_each   = toset(var.server_config.k8s_worker_instances)
+#  pool       = "Ext-Net"
+#  depends_on = [openstack_compute_instance_v2.OVH_in_Fire_worker]
+#}
+#
+#resource "openstack_compute_floatingip_associate_v2" "fip_assoc_worker" {
+#  for_each = openstack_networking_floatingip_v2.fip_worker
+#  floating_ip = each.value.address
+#  instance_id = openstack_compute_instance_v2.OVH_in_Fire_worker[each.key].id
+#}
+#
+#resource "null_resource" "ansible_provisioning" {
+#  depends_on = [openstack_compute_instance_v2.OVH_in_Fire_controller, openstack_compute_instance_v2.OVH_in_Fire_worker]
+#
+#  triggers = {
+#    controller_ids = join(",", [for instance in openstack_compute_instance_v2.OVH_in_Fire_controller: instance.id])
+#    worker_ids = join(",", [for instance in openstack_compute_instance_v2.OVH_in_Fire_worker: instance.id])
+#  }
+#
+#  provisioner "local-exec" {
+#    command = <<-EOT
+#      export MASTER_IP="${join(",", openstack_networking_floatingip_v2.fip_controller.*.address)}"
+#      export WORKER_IPS="${join(",", openstack_networking_floatingip_v2.fip_worker.*.address)}"
+#      ansible-playbook playbook.yml
+#    EOT
+#  }
+#}
