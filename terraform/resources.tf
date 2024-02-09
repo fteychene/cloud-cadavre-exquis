@@ -25,7 +25,7 @@ resource null_resource "register_ssh_private_key" {
 resource "openstack_compute_keypair_v2" "keypair" {
   name       = var.name
   public_key = tls_private_key.private_key.public_key_openssh
-  provider = openstack.ovh
+  provider   = openstack.ovh
   depends_on = [null_resource.register_ssh_private_key]
 }
 
@@ -47,16 +47,9 @@ resource "openstack_compute_instance_v2" "OVH_in_Fire_controller" {
   }
   connection {
     type        = "ssh"
-    user        = "root"
+    user        = "fedora"
     private_key = tls_private_key.private_key.private_key_pem
     host        = self.floating_ip
-  }
-
-  provisioner "remote-exec" {
-    scripts = [
-      "./bin/01_install.sh",
-      "./bin/02_kubeadm_init.sh"
-    ]
   }
 }
 resource "openstack_compute_instance_v2" "OVH_in_Fire_worker" {
@@ -66,6 +59,14 @@ resource "openstack_compute_instance_v2" "OVH_in_Fire_worker" {
   image_name  = var.server_config.image
   flavor_name = var.server_config.worker_server_type
   key_pair    = openstack_compute_keypair_v2.keypair.name
+  user_data = <<-EOF
+    #!/bin/bash
+    echo "${join("\n", var.ssh_public_keys)}" > /tmp/authorized_keys
+    sudo mv /tmp/authorized_keys /home/fedora/.ssh/authorized_keys
+    sudo chown fedora:fedora /home/fedora/.ssh/authorized_keys
+    sudo chmod 600 /home/fedora/.ssh/authorized_keys
+    echo "###" > /tmp/authorized_keys
+  EOF
   security_groups = ["default"]
   network {
     name      = "Ext-Net"
