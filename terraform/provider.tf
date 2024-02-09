@@ -8,7 +8,7 @@ provider "openstack" {
 provider "ovh" {
   alias              = "ovh"
   endpoint           = "ovh-eu"
-  application_key    = ""
-  application_secret = ""
-  consumer_key       = ""
+  application_key    = var.OS_APPLICATION_KEY
+  application_secret = var.OS_APPLICATION_SECRET
+  consumer_key       = var.OS_CONSUMER_KEY
 }
