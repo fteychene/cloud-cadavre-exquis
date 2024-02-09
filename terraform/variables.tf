@@ -9,7 +9,7 @@ variable "server_config" {
     worker_server_type = "r3-16"
     image = "Fedora 38"
     k8s_controller_instances = ["controller"]
-    k8s_worker_instances = ["worker1", "worker2"]
+    k8s_worker_instances = ["worker1"]
   })
 }
 
