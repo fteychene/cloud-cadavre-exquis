@@ -12,12 +12,12 @@ resource null_resource "register_ssh_private_key" {
     key = base64sha256(tls_private_key.private_key.private_key_pem)
   }
 
-  provisioner "local-exec" {
-    command = "bash -c 'echo \"${tls_private_key.private_key.private_key_pem}\" > ./ovh.pkey'"
-    environment = {
-      KEY = base64encode(tls_private_key.private_key.private_key_pem)
-    }
-  }
+  # provisioner "local-exec" {
+  #   command = "bash -c 'echo \"${tls_private_key.private_key.private_key_pem}\" > ./ovh.pkey'"
+  #   environment = {
+  #     KEY = base64encode(tls_private_key.private_key.private_key_pem)
+  #   }
+  # }
 }
 
 # Keypair which will be used on nodes and bastion
