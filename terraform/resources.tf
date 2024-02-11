@@ -60,7 +60,12 @@ resource "openstack_compute_instance_v2" "OVH_in_Fire_controller" {
   }
 
   provisioner "local-exec" {
-    command = "export WORKER_IPS=${openstack_compute_instance_v2.OVH_in_Fire_controller.network.0.fixed_ip_v4}"
+    command =  <<-EOF
+      export WORKER_IPS=${openstack_compute_instance_v2.OVH_in_Fire_controller.network.0.fixed_ip_v4}
+      echo "[workers]" > /tmp/worker_ips
+      echo $WORKER_IPS >> /tmp/worker_ips
+      ansible-playbook -u fedora -i /tmp/worker_ips playbook.yml --tags "install"
+      EOF
   }
 }
 

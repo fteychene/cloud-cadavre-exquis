@@ -8,34 +8,40 @@
         name: docker.io
         state: present
         update_cache: true
+      tags: install
 
     - name: Install apt-transport-https
       ansible.builtin.apt:
         name: apt-transport-https
         state: present
+      tags: install
 
     - name: Add Kubernetes apt-key
       ansible.builtin.apt_key:
         url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
         state: present
+      tags: install
 
     - name: Add Kubernetes apt repository
       ansible.builtin.apt_repository:
         repo: deb http://apt.kubernetes.io/ kubernetes-xenial main
         state: present
+      tags: install
 
     - name: Install kubelet kubeadm kubectl
       ansible.builtin.apt:
         name: "{{ packages }}"
         state: present
         update_cache: true
+      tags: install
       vars:
         packages:
           - kubelet
           - kubeadm
           - kubectl
 
-- hosts: OVH_in_Fire_controller
+- name: Setup Kubernetes controller
+  hosts: OVH_in_Fire_controller
   become: true
   tasks:
     - name: Pull kubeadm required images
@@ -59,11 +65,11 @@
 
     - name: Get Master IP
       ansible.builtin.shell: hostname -I | awk '{print $1}'
-      pipefail: true
       register: k8s_master_ip
       changed_when: false
 
-- hosts: OVH_in_Fire_worker
+- name: Setup Kubernetes worker
+  hosts: OVH_in_Fire_worker
   become: true
   tasks:
     - name: Join cluster
