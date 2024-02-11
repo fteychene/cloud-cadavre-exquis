@@ -3,74 +3,80 @@
   hosts: all
   become: true
   tasks:
-    - name: Install docker
-      ansible.builtin.apt:
-        name: docker.io
-        state: present
-        update_cache: true
-      tags: install
+      - name: Install docker
+        ansible.builtin.dnf:
+            name: docker
+            state: present
+            update_cache: true
+        tags: install
 
-    - name: Install apt-transport-https
-      ansible.builtin.apt:
-        name: apt-transport-https
-        state: present
-      tags: install
+      - name: Start and enable docker
+        ansible.builtin.service:
+            name: docker
+            state: started
+            enabled: true
+        tags: install
 
-    - name: Add Kubernetes apt-key
-      ansible.builtin.apt_key:
-        url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
-        state: present
-      tags: install
+      - name: Install apt-transport-https
+        ansible.builtin.dnf:
+            name: apt-transport-https
+            state: present
+        tags: install
 
-    - name: Add Kubernetes apt repository
-      ansible.builtin.apt_repository:
-        repo: deb http://apt.kubernetes.io/ kubernetes-xenial main
-        state: present
-      tags: install
+      - name: Add Kubernetes apt repository
+        ansible.builtin.yum_repository:
+            name: kubernetes
+            description: Kubernetes Repository
+            baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-\$basearch
+            gpgcheck: true
+            gpgkey: https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+            enabled: true
+            state: present
+        tags: install
 
-    - name: Install kubelet kubeadm kubectl
-      ansible.builtin.apt:
-        name: "{{ packages }}"
-        state: present
-        update_cache: true
-      tags: install
-      vars:
-        packages:
-          - kubelet
-          - kubeadm
-          - kubectl
+      - name: Install kubelet kubeadm kubectl
+        ansible.builtin.dnf:
+            name: '{{ packages }}'
+            state: present
+            update_cache: true
+        tags: install
+        vars:
+            packages:
+                - kubelet
+                - kubeadm
+                - kubectl
 
 - name: Setup Kubernetes controller
   hosts: OVH_in_Fire_controller
   become: true
   tasks:
-    - name: Pull kubeadm required images
-      ansible.builtin.command: kubeadm config images pull
+      - name: Pull kubeadm required images
+        ansible.builtin.command: kubeadm config images pull
 
-    - name: Initialize Kubernetes master
-      ansible.builtin.command: kubeadm init --pod-network-cidr=10.244.0.0/16
+      - name: Initialize Kubernetes master
+        ansible.builtin.command: kubeadm init --pod-network-cidr=10.244.0.0/16
 
-    - name: Copy kube config file for regular user
-      ansible.builtin.copy:
-        src: /etc/kubernetes/admin.conf
-        dest: $HOME/.kube/config_remote
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
-        mode: '0644'
+      - name: Copy kube config file for regular user
+        ansible.builtin.copy:
+            src: /etc/kubernetes/admin.conf
+            dest: $HOME/.kube/config_remote
+            owner: '{{ ansible_user }}'
+            group: '{{ ansible_user }}'
+            mode: '0644'
 
-    - name: Get join command
-      ansible.builtin.shell: kubeadm token create --print-join-command
-      register: k8s_join_command
-      changed_when: false
+      - name: Get join command
+        ansible.builtin.shell: kubeadm token create --print-join-command
+        register: k8s_join_command
+        changed_when: false
 
-    - name: Get Master IP
-      ansible.builtin.shell: hostname -I | awk '{print $1}'
-      register: k8s_master_ip
-      changed_when: false
+      - name: Get Master IP
+        ansible.builtin.shell: hostname -I | awk '{print $1}'
+        register: k8s_master_ip
+        changed_when: false
 
 - name: Setup Kubernetes worker
   hosts: OVH_in_Fire_worker
   become: true
   tasks:
-    - name: Join cluster
-      ansible.builtin.shell: "{{ hostvars[k8s-controller].k8s_join_command.stdout }}"
+      - name: Join cluster
+        ansible.builtin.shell: '{{ hostvars[k8s-controller].k8s_join_command.stdout }}'
