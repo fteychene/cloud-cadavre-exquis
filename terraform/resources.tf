@@ -34,11 +34,10 @@ resource "openstack_compute_keypair_v2" "keypair" {
 ###
 
 resource "openstack_compute_instance_v2" "OVH_in_Fire_controller" {
-  for_each    = toset(var.server_config.k8s_controller_instances)
-  name        = each.key
+  name        = "controller"
   provider    = openstack.ovh
-  image_name  = var.server_config.image
-  flavor_name = var.server_config.controller_server_type
+  image_name  = "Fedora 38"
+  flavor_name = "c3-4"
   key_pair    = openstack_compute_keypair_v2.keypair.name
   user_data = <<-EOF
     #!/bin/bash
@@ -50,22 +49,26 @@ resource "openstack_compute_instance_v2" "OVH_in_Fire_controller" {
   EOF
   security_groups = ["default"]
   network {
-    name      = "Ext-Net"
+    uuid = "6011fbc9-4cbf-46a4-8452-6890a340b60b"
+    name = "Ext-Net"
   }
   connection {
     type        = "ssh"
     user        = "fedora"
     private_key = tls_private_key.private_key.private_key_pem
     host        = self.floating_ip
+  }
+
+  provisioner "local-exec" {
+    command = "export WORKER_IPS=${openstack_compute_instance_v2.OVH_in_Fire_controller.network.0.fixed_ip_v4}"
   }
 }
 
 resource "openstack_compute_instance_v2" "OVH_in_Fire_worker" {
-  for_each    = toset(var.server_config.k8s_worker_instances)
-  name        = each.key
+  name        = "worker1"
   provider    = openstack.ovh
-  image_name  = var.server_config.image
-  flavor_name = var.server_config.worker_server_type
+  image_name  = "Fedora 38"
+  flavor_name = "r3-16"
   key_pair    = openstack_compute_keypair_v2.keypair.name
   user_data = <<-EOF
     #!/bin/bash
@@ -77,7 +80,8 @@ resource "openstack_compute_instance_v2" "OVH_in_Fire_worker" {
   EOF
   security_groups = ["default"]
   network {
-    name      = "Ext-Net"
+    uuid = "6011fbc9-4cbf-46a4-8452-6890a340b60b"
+    name = "Ext-Net"
   }
 
   connection {
@@ -86,45 +90,21 @@ resource "openstack_compute_instance_v2" "OVH_in_Fire_worker" {
     private_key = tls_private_key.private_key.private_key_pem
     host        = self.floating_ip
   }
+  provisioner "local-exec" {
+    command = "export MASTER_IP=${openstack_compute_instance_v2.OVH_in_Fire_worker.network.0.fixed_ip_v4}"
+  }
 }
 
-data "openstack_networking_network_v2" "ext_network" {
-  name = "public"
-}
-
-data "openstack_networking_subnet_ids_v2" "ext_subnets" {
-  network_id = data.openstack_networking_network_v2.ext_network.id
-}
-
-resource "openstack_networking_floatingip_v2" "myip" {
-  pool       = data.openstack_networking_network_v2.ext_network.name
-  subnet_ids = data.openstack_networking_subnet_ids_v2.ext_subnets.ids
-}
-resource "openstack_compute_floatingip_associate_v2" "controler_ip" {
-  for_each = openstack_compute_instance_v2.OVH_in_Fire_controller
-  instance_id = each.value.id
-  floating_ip = openstack_networking_floatingip_v2.myip.address
-}
-
-resource "openstack_compute_floatingip_associate_v2" "worker_ip" {
-  for_each = openstack_compute_instance_v2.OVH_in_Fire_worker
-  instance_id = each.value.id
-  floating_ip = openstack_networking_floatingip_v2.myip.address
-}
 
 resource "null_resource" "ansible_provisioning" {
  depends_on = [openstack_compute_instance_v2.OVH_in_Fire_controller, openstack_compute_instance_v2.OVH_in_Fire_worker]
 
  triggers = {
-   controller_ids = join(",", [for instance in openstack_compute_instance_v2.OVH_in_Fire_controller: instance.id])
-   worker_ids = join(",", [for instance in openstack_compute_instance_v2.OVH_in_Fire_worker: instance.id])
+   controller_id = openstack_compute_instance_v2.OVH_in_Fire_controller.id
+   worker_id = openstack_compute_instance_v2.OVH_in_Fire_worker.id
  }
 
  provisioner "local-exec" {
-   command = <<-EOT
-     export MASTER_IP="${join(",", openstack_compute_floatingip_associate_v2.controler_ip.*.floating_ip)}"
-     export WORKER_IPS="${join(",", openstack_compute_floatingip_associate_v2.worker_ip.*.floating_ip)}"
-     ansible-playbook playbook.yml
-   EOT
+   command = "ansible-playbook playbook.yml"
  }
 }
