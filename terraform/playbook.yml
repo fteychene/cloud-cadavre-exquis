@@ -47,14 +47,16 @@
                 - kubectl
 
 - name: Setup Kubernetes controller
-  hosts: OVH_in_Fire_controller
+  hosts: controller
   become: true
   tasks:
       - name: Pull kubeadm required images
         ansible.builtin.command: kubeadm config images pull
+        tags: setup_controller
 
       - name: Initialize Kubernetes master
         ansible.builtin.command: kubeadm init --pod-network-cidr=10.244.0.0/16
+        tags: setup_controller
 
       - name: Copy kube config file for regular user
         ansible.builtin.copy:
@@ -63,20 +65,24 @@
             owner: '{{ ansible_user }}'
             group: '{{ ansible_user }}'
             mode: '0644'
+        tags: setup_controller
 
       - name: Get join command
         ansible.builtin.shell: kubeadm token create --print-join-command
         register: k8s_join_command
         changed_when: false
+        tags: setup_controller
 
       - name: Get Master IP
         ansible.builtin.shell: hostname -I | awk '{print $1}'
         register: k8s_master_ip
         changed_when: false
+        tags: setup_controller
 
 - name: Setup Kubernetes worker
-  hosts: OVH_in_Fire_worker
+  hosts: workers
   become: true
   tasks:
       - name: Join cluster
         ansible.builtin.shell: '{{ hostvars[k8s-controller].k8s_join_command.stdout }}'
+        tags: setup_worker

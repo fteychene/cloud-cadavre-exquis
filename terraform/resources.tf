@@ -61,10 +61,9 @@ resource "openstack_compute_instance_v2" "OVH_in_Fire_controller" {
 
   provisioner "local-exec" {
     command =  <<-EOF
-      export WORKER_IPS=${openstack_compute_instance_v2.OVH_in_Fire_controller.network.0.fixed_ip_v4}
-      echo "[workers]" > /tmp/worker_ips
-      echo $WORKER_IPS >> /tmp/worker_ips
-      ansible-playbook -u fedora -i /tmp/worker_ips playbook.yml --tags "install"
+      export CONTROLLER_IPS=${openstack_compute_instance_v2.OVH_in_Fire_controller.network.0.fixed_ip_v4}
+      echo "[controller]" > /tmp/controller_ips
+      echo $CONTROLLER_IPS >> /tmp/controller_ips
       EOF
   }
 }
@@ -96,7 +95,11 @@ resource "openstack_compute_instance_v2" "OVH_in_Fire_worker" {
     host        = self.floating_ip
   }
   provisioner "local-exec" {
-    command = "export MASTER_IP=${openstack_compute_instance_v2.OVH_in_Fire_worker.network.0.fixed_ip_v4}"
+    command =  <<-EOF
+      export WORKER_IPS=${openstack_compute_instance_v2.OVH_in_Fire_worker.network.0.fixed_ip_v4}
+      echo "[workers]" > /tmp/worker_ips
+      echo $WORKER_IPS >> /tmp/worker_ips
+      EOF
   }
 }
 
@@ -109,7 +112,23 @@ resource "null_resource" "ansible_provisioning" {
    worker_id = openstack_compute_instance_v2.OVH_in_Fire_worker.id
  }
 
- provisioner "local-exec" {
-   command = "ansible-playbook playbook.yml"
+ provisioner "remote-exec" {
+   connection {
+     host = openstack_compute_instance_v2.OVH_in_Fire_controller.network.0.fixed_ip_v4
+     user = "fedora"
+   }
+   inline = [ "echo 'Connected to Controller !'" ]
  }
+ provisioner "remote-exec" {
+   connection {
+     host = openstack_compute_instance_v2.OVH_in_Fire_worker.network.0.fixed_ip_v4
+     user = "fedora"
+   }
+   inline = [ "echo 'Connected to Worker !'" ]
+ }
+
+ provisioner "local-exec" {
+   command = "ansible-playbook -u fedora -i /tmp/worker_ips playbook.yml -i /tmp/controller_ips --tags 'install'"
+ }
+
 }
