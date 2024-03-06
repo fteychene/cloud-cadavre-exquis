@@ -23,13 +23,13 @@
             state: present
         tags: install
 
-      - name: Add Kubernetes apt repository
+      - name: Add Kubernetes yum repository
         ansible.builtin.yum_repository:
             name: kubernetes
             description: Kubernetes Repository
-            baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-\$basearch
+            baseurl: https://pkgs.k8s.io/core:/stable:/v1.29/rpm/
             gpgcheck: true
-            gpgkey: https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+            gpgkey: https://pkgs.k8s.io/core:/stable:/v1.29/rpm/repodata/repomd.xml.key
             enabled: true
             state: present
         tags: install
