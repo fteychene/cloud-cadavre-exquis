@@ -101,20 +101,14 @@
               tags: setup_controller
 
             - name: Set join command
-              ansible.builtin.set_fact: join_command:"{{ join_command_raw.stdout_lines[0] }}"
+              ansible.builtin.add_host:
+                  name: "join_command"
+                  commande: "{{ join_command_raw.stdout_lines[0] }}"
 
-            - name: Get Master IP
-              ansible.builtin.command: hostname -I | awk '{print $1}'
-              register: k8s_master_ip
-              changed_when: false
-              tags: setup_controller
-
-- hosts: workers
+- name: Setup Kubernetes worker
+  hosts: workers
   become: true
   tasks:
-      - name: Print join command
-        ansible.builtin.debug:
-            msg: "{{ hostvars['controller'].join_command }}"
       - name: Join cluster
-        ansible.builtin.shell: "{{ hostvars['controller'].join_command }}"
+        ansible.builtin.shell: "sudo {{ hostvars['join_command']['commande'] }}"
         tags: setup_worker
