@@ -30,6 +30,27 @@ resource "openstack_compute_keypair_v2" "keypair" {
 
 
 ###
+# Create the security group
+###
+
+resource "openstack_networking_secgroup_v2" "kube_secgroup" {
+  name        = "kube_security_group"
+  description = "Security group for Kubernetes cluster"
+}
+
+resource "openstack_networking_secgroup_rule_v2" "kube_api" {
+  direction         = "ingress"
+  ethertype         = "IPv4"
+  protocol          = "tcp"
+  port_range_min    = 6443
+  port_range_max    = 6443
+  remote_ip_prefix  = "0.0.0.0/0" # Adjust this as needed for your security requirements
+  security_group_id = openstack_networking_secgroup_v2.kube_secgroup.id
+}
+
+
+
+###
 # Create the VM
 ###
 
@@ -47,7 +68,7 @@ resource "openstack_compute_instance_v2" "OVH_in_Fire_controller" {
     sudo chmod 600 /home/fedora/.ssh/authorized_keys
     echo "###" > /tmp/authorized_keys
   EOF
-  security_groups = ["default"]
+  security_groups = ["default", openstack_networking_secgroup_v2.kube_secgroup.name]
   network {
     uuid = "6011fbc9-4cbf-46a4-8452-6890a340b60b"
     name = "Ext-Net"
@@ -82,7 +103,7 @@ resource "openstack_compute_instance_v2" "OVH_in_Fire_worker" {
     sudo chmod 600 /home/fedora/.ssh/authorized_keys
     echo "###" > /tmp/authorized_keys
   EOF
-  security_groups = ["default"]
+  security_groups = ["default", openstack_networking_secgroup_v2.kube_secgroup.name]
   network {
     uuid = "6011fbc9-4cbf-46a4-8452-6890a340b60b"
     name = "Ext-Net"
