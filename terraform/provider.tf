@@ -12,3 +12,8 @@ provider "ovh" {
   application_secret = var.OS_APPLICATION_SECRET
   consumer_key       = var.OS_CONSUMER_KEY
 }
+
+provider "kubernetes" {
+  alias = "kubernetes"
+  config_path = "./kubeconfig"
+}
