@@ -8,6 +8,7 @@ dispatcher:
 
 
 register:
+  replica: 2
   image:
     repository: docker.io/fteychene
     name: cloud-cadavre-exquis-register
@@ -35,5 +36,7 @@ adjective:
     tag: 1.0-SNAPSHOT
 
 postgresql:
-  postgresqlDatabase: cadavreexquis
-  postgresqlUsername: pg
+  architecture: replication
+  database: "cadavre"
+  auth:
+    postgresPassword: "postgres"
