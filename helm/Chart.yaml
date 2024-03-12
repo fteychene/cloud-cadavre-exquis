@@ -4,6 +4,6 @@ type: application
 version: 1.0.0-SNAPSHOT
 dependencies:
   - name: postgresql
-    version: 10.14.2
+    version: 12.10.0
     repository: https://charts.bitnami.com/bitnami
     alias: postgresql
