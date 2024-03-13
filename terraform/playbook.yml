@@ -123,33 +123,33 @@
         ansible.builtin.shell: "sudo {{ hostvars['join_command']['commande'] }}"
         tags: setup_worker
 
-- name: Install FluxCD
-  hosts: controller
-  become: true
-  tasks:
-      - name: Download FluxCD installation script
-        ansible.builtin.get_url:
-            url: https://toolkit.fluxcd.io/install.sh
-            dest: /tmp/install_flux.sh
-            mode: '0755'
-        tags: install
-      - name: Install FluxCD
-        ansible.builtin.shell: |
-            set -eo pipefail
-            if ! command -v flux >/dev/null; then
-                sudo /tmp/install_flux.sh
-            fi
-        tags: install
-        register: flux_install_result
-        changed_when: '"CHANGED" in flux_install_result.stdout'
-      - name: Set up FluxCD
-        ansible.builtin.shell: |
-          flux bootstrap github \
-          --owner=ffirehub \
-          --repository=cloud-cadavre-exquis \
-          --branch=master \
-          --path=helm \
-          --token=
-        register: flux_setup_result
-        changed_when: flux_setup_result.rc == 0
-        tags: install
+# - name: Install FluxCD
+#   hosts: controller
+#   become: true
+#   tasks:
+#       - name: Download FluxCD installation script
+#         ansible.builtin.get_url:
+#             url: https://toolkit.fluxcd.io/install.sh
+#             dest: /tmp/install_flux.sh
+#             mode: '0755'
+#         tags: install
+#       - name: Install FluxCD
+#         ansible.builtin.shell: |
+#             set -eo pipefail
+#             if ! command -v flux >/dev/null; then
+#                 sudo /tmp/install_flux.sh
+#             fi
+#         tags: install
+#         register: flux_install_result
+#         changed_when: '"CHANGED" in flux_install_result.stdout'
+#       - name: Set up FluxCD
+#         ansible.builtin.shell: |
+#           flux bootstrap github \
+#           --owner=ffirehub \
+#           --repository=cloud-cadavre-exquis \
+#           --branch=master \
+#           --path=helm \
+#           --token=
+#         register: flux_setup_result
+#         changed_when: flux_setup_result.rc == 0
+#         tags: install
