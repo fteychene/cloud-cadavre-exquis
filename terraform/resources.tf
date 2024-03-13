@@ -133,21 +133,6 @@ resource "null_resource" "ansible_provisioning" {
    worker_id = openstack_compute_instance_v2.OVH_in_Fire_worker.id
  }
 
- provisioner "remote-exec" {
-   connection {
-     host = openstack_compute_instance_v2.OVH_in_Fire_controller.network.0.fixed_ip_v4
-     user = "fedora"
-   }
-   inline = [ "echo 'Connected to Controller !'" ]
- }
- provisioner "remote-exec" {
-   connection {
-     host = openstack_compute_instance_v2.OVH_in_Fire_worker.network.0.fixed_ip_v4
-     user = "fedora"
-   }
-   inline = [ "echo 'Connected to Worker !'" ]
- }
-
  provisioner "local-exec" {
    command = "ansible-playbook -u fedora -i /tmp/worker_ips playbook.yml -i /tmp/controller_ips"
  }
