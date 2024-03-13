@@ -1,0 +1,155 @@
+---
+- name: Install KubernetesADM
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Wait for instance be ready
+      ansible.builtin.wait_for_connection:
+        timeout: 300
+      tags: install
+    - name: Install docker
+      ansible.builtin.dnf:
+        name: docker
+        state: present
+        update_cache: true
+      tags: install
+
+    - name: Start and enable docker
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+      tags: install
+
+    - name: Install apt-transport-https
+      ansible.builtin.dnf:
+        name: apt-transport-https
+        state: present
+      tags: install
+
+    - name: Add Kubernetes yum repository
+      ansible.builtin.yum_repository:
+        name: kubernetes
+        description: Kubernetes Repository
+        baseurl: https://pkgs.k8s.io/core:/stable:/v1.29/rpm/
+        gpgcheck: true
+        gpgkey: https://pkgs.k8s.io/core:/stable:/v1.29/rpm/repodata/repomd.xml.key
+        enabled: true
+        state: present
+      tags: install
+
+    - name: Install kubelet kubeadm kubectl
+      ansible.builtin.dnf:
+        name: '{{ packages }}'
+        state: present
+        update_cache: true
+      tags: install
+      vars:
+        packages:
+          - kubelet
+          - kubeadm
+          - kubectl
+          - iproute-tc
+    - name: Enable and start kubelet
+      ansible.builtin.service:
+        name: kubelet
+        state: started
+        enabled: true
+      tags: install
+    - name: Remove swap package
+      ansible.builtin.dnf:
+        name: zram-generator-defaults
+        state: absent
+      tags: install
+    - name: Disable swap
+      ansible.builtin.shell: sudo swapoff -a
+      tags: install
+    - name: Restart containerd
+      ansible.builtin.service:
+        name: containerd
+        state: restarted
+        enabled: true
+      tags: install
+
+- name: Setup Kubernetes controller
+  hosts: controller
+  become: true
+  tasks:
+    - name: Pull kubeadm required images
+      ansible.builtin.command: sudo kubeadm config images pull
+      tags: setup_controller
+    - name: Initialize Kubernetes master
+      ansible.builtin.command: sudo kubeadm init --pod-network-cidr=10.244.0.0/16
+      tags: setup_controller
+    - name: Create directory for kube config
+      ansible.builtin.file:
+        path: /home/fedora/.kube
+        state: directory
+        owner: 'fedora'
+        group: 'fedora'
+        mode: '0644'
+    - name: Copy kube config file for regular user
+      ansible.builtin.copy:
+        src: /etc/kubernetes/admin.conf
+        dest: /home/fedora/.kube/config_remote
+        owner: 'fedora'
+        group: 'fedora'
+        mode: '0644'
+        remote_src: true
+      tags: setup_controller
+    - name: Fetch kube config file
+      ansible.builtin.fetch:
+        src: /etc/kubernetes/admin.conf
+        dest: ./kubeconfig
+        flat: true
+      tags: setup_controller
+    - name: Get join command
+      ansible.builtin.command: sudo kubeadm token create --print-join-command
+      register: join_command_raw
+      changed_when: false
+      tags: setup_controller
+
+    - name: Set join command
+      ansible.builtin.add_host:
+        name: 'join_command'
+        commande: '{{ join_command_raw.stdout_lines[0] }}'
+
+- name: Setup Kubernetes worker
+  hosts: workers
+  become: true
+  tasks:
+      - name: Join cluster
+        ansible.builtin.shell: "sudo {{ hostvars['join_command']['commande'] }}"
+        tags: setup_worker
+
+# - name: Install FluxCD
+#   hosts: controller
+#   become: true
+#   tasks:
+#       - name: Download FluxCD installation script
+#         ansible.builtin.get_url:
+#             url: https://toolkit.fluxcd.io/install.sh
+#             dest: /tmp/install_flux.sh
+#             mode: '0755'
+#         tags: install
+#       - name: Install FluxCD
+#         ansible.builtin.shell: |
+#             set -eo pipefail
+#             if ! command -v flux >/dev/null; then
+#                 sudo /tmp/install_flux.sh
+#             fi
+#         tags: install
+#         register: flux_install_result
+#         changed_when: '"CHANGED" in flux_install_result.stdout'
+#       - name: Set up FluxCD
+#         ansible.builtin.shell: |
+#           flux bootstrap github \
+#           --owner=ffirehub \
+#           --repository=cloud-cadavre-exquis \
+#           --branch=master \
+#           --path=helm \
+#           --token=
+#         register: flux_setup_result
+#         changed_when: flux_setup_result.rc == 0
+#         tags: install
